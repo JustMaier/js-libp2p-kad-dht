@@ -33,13 +33,9 @@ module.exports = (dht) => {
     const dsKey = utils.bufferToKey(cid.buffer)
 
     parallel([
-      (cb) => dht.datastore.has(dsKey, (err, exists) => {
-        if (err) {
-          log.error('Failed to check datastore existence', err)
-          return cb(null, false)
-        }
-
-        cb(null, exists)
+      (cb) => dht.datastore.has(dsKey).then((exists) => cb(null, exists)).catch((err) => {
+        log.error('Failed to check datastore existence', err)
+        cb(null, false)
       }),
       (cb) => dht.providers.getProviders(cid, cb),
       (cb) => dht._betterPeersToQuery(msg, peer, cb)

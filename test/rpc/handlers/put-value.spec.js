@@ -65,8 +65,7 @@ describe('rpc - handlers - PutValue', () => {
       expect(response).to.be.eql(msg)
 
       const key = utils.bufferToKey(Buffer.from('hello'))
-      dht.datastore.get(key, (err, res) => {
-        expect(err).to.not.exist()
+      dht.datastore.get(key).then((res) => {
         const rec = Record.deserialize(res)
 
         expect(rec).to.have.property('key').eql(Buffer.from('hello'))
@@ -76,6 +75,8 @@ describe('rpc - handlers - PutValue', () => {
           expect(rec.timeReceived < new Date()).to.be.eql(true)
           done()
         }, 10)
+      }).catch((err) => {
+        expect(err).to.not.exist()
       })
     })
   })

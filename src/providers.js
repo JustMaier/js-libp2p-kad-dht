@@ -6,7 +6,8 @@ const each = require('async/each')
 const pull = require('pull-stream')
 const CID = require('cids')
 const PeerId = require('peer-id')
-const Key = require('interface-datastore').Key
+const { Key, utils: { map } } = require('interface-datastore')
+const promiseToCallback = require('promise-to-callback')
 
 const c = require('./constants')
 const utils = require('./utils')
@@ -166,7 +167,7 @@ class Providers {
     const provs = this.providers.get(makeProviderKey(cid))
 
     if (!provs) {
-      return loadProviders(this.datastore, cid, callback)
+      return promiseToCallback(loadProviders(this.datastore, cid))(callback)
     }
 
     callback(null, provs)
@@ -245,7 +246,7 @@ class Providers {
     }
 
     if (!provs) {
-      loadProviders(this.datastore, cid, next)
+      promiseToCallback(loadProviders(this.datastore, cid))(next)
     } else {
       next(null, provs)
     }
@@ -301,7 +302,7 @@ function writeProviderEntry (store, cid, peer, time, callback) {
     utils.encodeBase32(peer.id)
   ].join('')
 
-  store.put(new Key(dsKey), Buffer.from(varint.encode(time)), callback)
+  promiseToCallback(store.put(new Key(dsKey), Buffer.from(varint.encode(time))))(callback)
 }
 
 /**
@@ -314,23 +315,15 @@ function writeProviderEntry (store, cid, peer, time, callback) {
  *
  * @private
  */
-function loadProviders (store, cid, callback) {
-  pull(
-    store.query({ prefix: makeProviderKey(cid) }),
-    pull.map((entry) => {
-      const parts = entry.key.toString().split('/')
-      const lastPart = parts[parts.length - 1]
-      const rawPeerId = utils.decodeBase32(lastPart)
-      return [new PeerId(rawPeerId), readTime(entry.value)]
-    }),
-    pull.collect((err, res) => {
-      if (err) {
-        return callback(err)
-      }
-
-      return callback(null, new Map(res))
-    })
-  )
+async function loadProviders (store, cid) {
+  let res = []
+  for await (const entry of store.query({ prefix: makeProviderKey(cid) })) {
+    const parts = entry.key.toString().split('/')
+    const lastPart = parts[parts.length - 1]
+    const rawPeerId = utils.decodeBase32(lastPart)
+    res.push([new PeerId(rawPeerId), readTime(entry.value)])
+  }
+  return new Map(res)
 }
 
 function readTime (buf) {

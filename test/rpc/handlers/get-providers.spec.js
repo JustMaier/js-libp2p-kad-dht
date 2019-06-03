@@ -6,6 +6,7 @@ chai.use(require('dirty-chai'))
 const expect = chai.expect
 const parallel = require('async/parallel')
 const waterfall = require('async/waterfall')
+const promiseToCallback = require('promise-to-callback')
 
 const Message = require('../../../src/message')
 const utils = require('../../../src/utils')
@@ -66,7 +67,7 @@ describe('rpc - handlers - GetProviders', () => {
     const dsKey = utils.bufferToKey(v.cid.buffer)
 
     waterfall([
-      (cb) => dht.datastore.put(dsKey, v.value, cb),
+      (cb) => promiseToCallback(dht.datastore.put(dsKey, v.value))(cb),
       (cb) => handler(dht)(peers[0], msg, cb)
     ], (err, response) => {
       expect(err).to.not.exist()

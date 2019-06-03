@@ -37,13 +37,9 @@ module.exports = (dht) => {
 
       const key = utils.bufferToKey(record.key)
 
-      dht.datastore.put(key, record.serialize(), (err) => {
-        if (err) {
-          return callback(err)
-        }
-
-        callback(null, msg)
-      })
+      dht.datastore.put(key, record.serialize())
+                   .then(() => callback(null, msg))
+                   .catch((err) => callback(err))
     })
   }
 }
